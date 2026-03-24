@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HW01 - Your Own ChatGPT</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="bg-shape bg-shape-a"></div>
+    <div class="bg-shape bg-shape-b"></div>
+
+    <main class="app">
+      <aside class="settings-panel">
+        <h1>HW01. Your Own ChatGPT</h1>
+        <p class="subtitle">可選模型 / 自訂 prompt / 參數調整 / 串流 / 短期記憶</p>
+        <p class="api-tip">提示：要真正呼叫模型，請先在 <code>backend/.env</code> 放自己的 API key（支援 OpenAI / xAI / Groq）。</p>
+        <p class="api-tip">目前對話會自動保留在這台裝置的瀏覽器（localStorage）。</p>
+        <section class="compact-row">
+          <button id="toggleCompactSidebar" type="button" class="ghost ghost-small">濃縮介面</button>
+          <span id="compactStateText" class="compact-state">ON</span>
+        </section>
+        <section class="theme-row">
+          <button id="toggleTheme" type="button" class="ghost ghost-small">切到黑夜</button>
+          <span id="themeStateText" class="theme-state">LIGHT</span>
+        </section>
+
+        <section class="settings-group">
+          <label for="modelSelect">模型</label>
+          <select id="modelSelect"></select>
+        </section>
+
+        <section class="settings-group">
+          <label for="systemPrompt">System Prompt</label>
+          <textarea id="systemPrompt" rows="4" placeholder="例如：你是一位超會教學的助教，回答簡潔、條列清楚。"></textarea>
+        </section>
+
+        <section class="settings-collapsible">
+          <button id="toggleAdvancedParams" type="button" class="collapse-toggle" aria-expanded="false" aria-controls="advancedParamsPanel">
+            <span>進階參數</span>
+            <span id="toggleAdvancedParamsText" class="collapse-toggle-text">展開</span>
+          </button>
+
+          <div id="advancedParamsPanel" class="collapsible-panel is-collapsed">
+            <section class="settings-grid">
+              <div class="slider-card">
+                <div class="slider-head">
+                  <label for="temperature">Temperature</label>
+                  <span id="temperatureValue" class="slider-value">0.7</span>
+                </div>
+                <input id="temperature" type="range" min="0" max="2" step="0.1" value="0.7" />
+                <p class="slider-help">低：更穩定保守。高：更有創意、更多變。</p>
+              </div>
+
+              <div class="slider-card">
+                <div class="slider-head">
+                  <label for="topP">Top P</label>
+                  <span id="topPValue" class="slider-value">1.0</span>
+                </div>
+                <input id="topP" type="range" min="0" max="1" step="0.1" value="1" />
+                <p class="slider-help">小：詞彙集中。大：詞彙選擇更多。</p>
+              </div>
+
+              <div class="slider-card">
+                <div class="slider-head">
+                  <label for="maxTokens">Max Tokens</label>
+                  <span id="maxTokensValue" class="slider-value">1024</span>
+                </div>
+                <input id="maxTokens" type="range" min="128" max="4096" step="32" value="1024" />
+                <p class="slider-help">限制單次回覆長度；越大可能回覆越長。</p>
+              </div>
+
+              <div class="slider-card">
+                <div class="slider-head">
+                  <label for="presencePenalty">Presence Penalty</label>
+                  <span id="presencePenaltyValue" class="slider-value">0.0</span>
+                </div>
+                <input id="presencePenalty" type="range" min="-2" max="2" step="0.1" value="0" />
+                <p class="slider-help">越高越鼓勵新主題，越低越傾向延續舊主題。</p>
+              </div>
+
+              <div class="slider-card">
+                <div class="slider-head">
+                  <label for="frequencyPenalty">Frequency Penalty</label>
+                  <span id="frequencyPenaltyValue" class="slider-value">0.0</span>
+                </div>
+                <input id="frequencyPenalty" type="range" min="-2" max="2" step="0.1" value="0" />
+                <p class="slider-help">越高越避免重複詞句，越低重複可能較多。</p>
+              </div>
+
+              <div class="slider-card">
+                <div class="slider-head">
+                  <label for="memoryTurns">記憶回合數</label>
+                  <span id="memoryTurnsValue" class="slider-value">8</span>
+                </div>
+                <input id="memoryTurns" type="range" min="1" max="30" step="1" value="8" />
+                <p class="slider-help">保留最近幾輪對話作為短期記憶。</p>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section class="settings-row">
+          <label class="switch-label" for="useMemory">
+            <input id="useMemory" type="checkbox" checked />
+            啟用短期記憶
+          </label>
+          <button id="clearMemory" class="ghost">清除伺服器記憶</button>
+        </section>
+
+        <section class="settings-row">
+          <button id="newChat" class="ghost">新對話</button>
+          <span id="statusText">Ready</span>
+        </section>
+
+        <section class="history-section">
+          <div class="history-header">
+            <span class="history-title">歷史對話</span>
+            <button id="clearAllHistory" type="button" class="ghost ghost-small">清空全部</button>
+          </div>
+          <div class="history-controls">
+            <select id="sessionSelect" class="session-select"></select>
+            <button id="deleteCurrentSession" type="button" class="session-delete">刪除</button>
+          </div>
+        </section>
+      </aside>
+
+      <section class="chat-panel">
+        <div id="chatMessages" class="chat-messages"></div>
+
+        <form id="chatForm" class="chat-input-area">
+          <textarea id="userInput" rows="3" placeholder="輸入訊息，Shift+Enter 換行，Enter 送出"></textarea>
+          <button id="sendBtn" type="submit">送出</button>
+        </form>
+      </section>
+    </main>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
