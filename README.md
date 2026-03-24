@@ -57,19 +57,11 @@ npm install
 cp .env.example .env
 ```
 
-3. 編輯 `backend/.env`
+3. 編輯 `backend/.env`（與目前 `.env.example` 一致）
 
 ```env
 # 模型供應商：openai / xai / groq
 LLM_PROVIDER=groq
-
-# OpenAI（可留空）
-OPENAI_API_KEY=
-OPENAI_BASE_URL=
-
-# xAI / Grok（可留空）
-XAI_API_KEY=
-XAI_BASE_URL=https://api.x.ai/v1
 
 # Groq（可留空；若是 gsk_ 開頭請填這裡）
 GROQ_API_KEY=your_groq_key
@@ -80,6 +72,18 @@ DEFAULT_MODEL=llama-3.1-8b-instant
 MODEL_OPTIONS=llama-3.1-8b-instant,llama-3.3-70b-versatile,openai/gpt-oss-20b
 
 PORT=3000
+```
+
+如果你要改用其他供應商，再額外加上對應欄位：
+
+```env
+# OpenAI
+OPENAI_API_KEY=
+OPENAI_BASE_URL=
+
+# xAI / Grok
+XAI_API_KEY=
+XAI_BASE_URL=https://api.x.ai/v1
 ```
 
 4. 啟動
