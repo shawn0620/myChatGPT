@@ -83,6 +83,65 @@ function setStatus(text) {
   statusText.textContent = text;
 }
 
+function toReadableHackMdText(input) {
+  const raw = typeof input === "string" ? input : String(input ?? "");
+  const looksLikeHackMd = /\\\(|\\\[|\\[a-zA-Z]+|[*_#`]{2,}|^\s*[-*]\s+/m.test(raw);
+
+  if (!looksLikeHackMd) {
+    return raw;
+  }
+
+  let text = raw.replace(/\r\n?/g, "\n");
+
+  // 常見 escape 還原（避免破壞 \times、\neq 這類 LaTeX 指令）
+  text = text.replace(/\\n(?![a-zA-Z])/g, "\n");
+  text = text.replace(/\\t(?![a-zA-Z])/g, "\t");
+  text = text.replace(/\\r(?![a-zA-Z])/g, "");
+
+  // 常見 LaTeX 轉成可讀文字
+  text = text.replace(/\\(?:mathbf|boldsymbol|mathrm|mathit|operatorname)\s*\{([^{}]+)\}/g, "$1");
+  text = text.replace(/\\(?:text|textbf|emph)\s*\{([^{}]+)\}/g, "$1");
+  text = text.replace(/\\vec\s*\{([^{}]+)\}/g, "$1");
+  text = text.replace(/\\left|\\right/g, "");
+  text = text.replace(/\\frac\s*\{([^{}]+)\}\s*\{([^{}]+)\}/g, "($1)/($2)");
+  text = text.replace(/\\sqrt\s*\{([^{}]+)\}/g, "sqrt($1)");
+  text = text.replace(/\\cdot/g, "·");
+  text = text.replace(/\\cdots|\\ldots/g, "...");
+  text = text.replace(/\\times/g, "×");
+  text = text.replace(/\\pm/g, "±");
+  text = text.replace(/\\div/g, "÷");
+  text = text.replace(/\\neq|\\ne/g, "≠");
+  text = text.replace(/\\leq|\\le/g, "≤");
+  text = text.replace(/\\geq|\\ge/g, "≥");
+  text = text.replace(/\\mathbb\{R\}/g, "R");
+  text = text.replace(/\\mathbb\{N\}/g, "N");
+  text = text.replace(/\\mathbb\{Z\}/g, "Z");
+
+  // 去掉行內/區塊公式包裝符號
+  text = text.replace(/\\\(([\s\S]*?)\\\)/g, "$1");
+  text = text.replace(/\\\[([\s\S]*?)\\\]/g, "$1");
+
+  // Markdown 基本可讀化
+  text = text.replace(/^#{1,6}\s+/gm, "");
+  text = text.replace(/^\s*[-*]\s+/gm, "• ");
+  text = text.replace(/\*\*(.*?)\*\*/g, "$1");
+  text = text.replace(/__(.*?)__/g, "$1");
+  text = text.replace(/`([^`]+)`/g, "$1");
+
+  // 解除常見跳脫符號（例如 \_ \- \*）
+  text = text.replace(/\\([\\`*_{}\[\]()#+\-.!])/g, "$1");
+
+  // 清理殘留 LaTeX 空白控制字元
+  text = text.replace(/\\[,;!]/g, " ");
+
+  // 收斂過多底線/多餘空白
+  text = text.replace(/_{2,}/g, "_");
+  text = text.replace(/[ \t]{2,}/g, " ");
+  text = text.replace(/[ \t]+\n/g, "\n");
+
+  return text.trimEnd();
+}
+
 function setSendingState(isSending) {
   isStreaming = isSending;
   sendBtn.disabled = isSending;
@@ -258,7 +317,8 @@ function addMessage(role, text, options = {}) {
     div.classList.add("error");
   }
 
-  div.textContent = text;
+  const displayText = role === "assistant" && !isError ? toReadableHackMdText(text) : text;
+  div.textContent = displayText;
   chatMessages.appendChild(div);
   chatMessages.scrollTop = chatMessages.scrollHeight;
 
@@ -280,7 +340,9 @@ function addMessage(role, text, options = {}) {
 function updateMessage(messageIndex, node, text, options = {}) {
   const { isError = false, persist = true } = options;
 
-  node.textContent = text;
+  const role = chatHistory[messageIndex]?.role || "assistant";
+  const displayText = role === "assistant" && !isError ? toReadableHackMdText(text) : text;
+  node.textContent = displayText;
   node.classList.toggle("error", Boolean(isError));
 
   if (!persist || messageIndex < 0 || !chatHistory[messageIndex]) {
